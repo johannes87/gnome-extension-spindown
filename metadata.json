@@ -1,0 +1,8 @@
+{
+  "name": "spindown Hard Drive",
+  "description": "Spins the Hard Drive down when instructe",
+  "uuid": "johannes.bittner+spindown@gmail.com",
+  "shell-version": [
+    "3.38"
+  ]
+}
