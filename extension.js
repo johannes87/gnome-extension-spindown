@@ -49,7 +49,6 @@ class Indicator extends PanelMenu.Button {
         const mountPoint = "/mnt/Data";
 
         this.menu.removeAll();
-
         if (findDeviceFile(mountPoint)) {
             this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${mountPoint}`));
             this.itemSpindown.connect('activate', () => { 
@@ -106,42 +105,49 @@ function findDeviceFile(mountPoint) {
     return mountpointLines[0].split(" ")[0];
 }
 
-function spindownDisk(mountPoint) {
+async function spindownDisk(mountPoint) {
     const deviceFilePath = findDeviceFile(mountPoint);
     if (!deviceFilePath) {
         Main.notify(_(`Mount point ${mountPoint} not found`));
         return;
     }
 
-    privilegedExec(['sh', '-c', `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`]).then(() => {
-        extension.updateIndicatorMenu();
-    });
+    // send SIGKILL to all processes using the mount point
+    await exec(['sh', '-c', `fuser -k -M -m ${mountPoint} 2>/dev/null`]);
+    await exec(
+        ['sh', '-c', `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`],
+        privileged=true)
+
+    extension.updateIndicatorMenu();
 }
 
-function mountDisk(mountPoint) {
-    privilegedExec(["mount", mountPoint]).then(() => {
-        extension.updateIndicatorMenu();
-    });
+async function mountDisk(mountPoint) {
+    await exec(["mount", mountPoint], privileged=true);
+    extension.updateIndicatorMenu();
 }
 
-function privilegedExec(args) {
+
+function exec(args, privileged=false) {
     return new Promise((resolve, reject) => {
         try {
+            log(`Executing ${privileged ? '(privileged)' : ''} ${args.join(',')}`);
+
+            if (privileged) {
+                args = ['pkexec'].concat(args);
+            }
             let proc = Gio.Subprocess.new(
-                ['pkexec'].concat(args),
-                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
-            );
+                args,
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
     
             proc.communicate_utf8_async(null, null, (proc, res) => {
                 try {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
     
-                    // Failure
                     if (!proc.get_successful()) {
+                        logError(`Non-Successful return code. Stderr: ${stderr}`);
                         reject(stderr);
                     }
     
-                    // Success
                     resolve(stdout);
                 } catch (e) {
                     logError(e);
