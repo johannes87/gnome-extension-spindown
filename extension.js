@@ -18,7 +18,7 @@
 
 /* exported init */
 
-const GETTEXT_DOMAIN = 'my-indicator-extension';
+const GETTEXT_DOMAIN = 'spindown-harddisk';
 
 const { GObject, St } = imports.gi;
 
@@ -35,14 +35,14 @@ const ByteArray = imports.byteArray;
 const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
     _init() {
-        super._init(0.0, _('Spin down hard disk'));
+        super._init(0.0, _('Spindown Harddisk'));
 
         this.add_child(new St.Icon({
             icon_name: 'drive-harddisk',
             style_class: 'system-status-icon',
         }));
 
-        this.updateMenu(); 
+        this.updateMenu();
     }
 
     updateMenu() {
@@ -51,13 +51,13 @@ class Indicator extends PanelMenu.Button {
         this.menu.removeAll();
         if (findDeviceFile(mountPoint)) {
             this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${mountPoint}`));
-            this.itemSpindown.connect('activate', () => { 
+            this.itemSpindown.connect('activate', () => {
                 spindownDisk(mountPoint);
             });
             this.menu.addMenuItem(this.itemSpindown);
         } else {
             this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${mountPoint}`));
-            this.itemMount.connect('activate', () => { 
+            this.itemMount.connect('activate', () => {
                 mountDisk(mountPoint);
             });
             this.menu.addMenuItem(this.itemMount);
@@ -105,6 +105,7 @@ function findDeviceFile(mountPoint) {
     return mountpointLines[0].split(" ")[0];
 }
 
+// TODO: use /dev/sda instead of /mnt/Data as input; this is what the user can configure (together with mountpoint)
 async function spindownDisk(mountPoint) {
     const deviceFilePath = findDeviceFile(mountPoint);
     if (!deviceFilePath) {
@@ -112,11 +113,21 @@ async function spindownDisk(mountPoint) {
         return;
     }
 
-    // send SIGKILL to all processes using the mount point
-    await exec(['sh', '-c', `fuser -k -M -m ${mountPoint} 2>/dev/null`]);
-    await exec(
-        ['sh', '-c', `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`],
-        privileged=true)
+    try {
+        await exec(['sh', '-c', `fuser -k -M -m ${mountPoint} 2>/dev/null`]);
+    }
+    catch(stderr) {
+        log(`fuser kill failed: ${stderr || '(empty)'}`);
+    }
+
+    try {
+        await exec(
+            ['sh', '-c', `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`],
+            privileged=true)
+    }
+    catch(stderr) {
+        log(`unmount-and-spindown failed: ${stderr}`);
+    }
 
     extension.updateIndicatorMenu();
 }
@@ -138,16 +149,15 @@ function exec(args, privileged=false) {
             let proc = Gio.Subprocess.new(
                 args,
                 Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
-    
+
             proc.communicate_utf8_async(null, null, (proc, res) => {
                 try {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-    
+
                     if (!proc.get_successful()) {
-                        logError(`Non-Successful return code. Stderr: ${stderr}`);
                         reject(stderr);
                     }
-    
+
                     resolve(stdout);
                 } catch (e) {
                     logError(e);
@@ -159,4 +169,4 @@ function exec(args, privileged=false) {
             reject(e);
         }
     });
-}   
+}
