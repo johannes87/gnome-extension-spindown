@@ -37,30 +37,33 @@ class Indicator extends PanelMenu.Button {
     _init() {
         super._init(0.0, _('Spindown Harddisk'));
 
-        this.add_child(new St.Icon({
+        this.indicatorIcon = new St.Icon({
             icon_name: 'drive-harddisk',
             style_class: 'system-status-icon',
-        }));
+        });
+        this.add_child(this.indicatorIcon);
+
+        this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${extension.mountPoint}`));
+        this.itemSpindown.connect('activate', () => {
+            spindownDisk(extension.mountPoint);
+        });
+
+        this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${extension.mountPoint}`));
+        this.itemMount.connect('activate', () => {
+            mountDisk(extension.mountPoint);
+        });
 
         this.updateMenu();
     }
 
     updateMenu() {
-        const mountPoint = "/mnt/Data";
-
         this.menu.removeAll();
-        if (findDeviceFile(mountPoint)) {
-            this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${mountPoint}`));
-            this.itemSpindown.connect('activate', () => {
-                spindownDisk(mountPoint);
-            });
+        if (findDeviceFile(extension.mountPoint)) {
             this.menu.addMenuItem(this.itemSpindown);
+            this.indicatorIcon.set_opacity(255);
         } else {
-            this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${mountPoint}`));
-            this.itemMount.connect('activate', () => {
-                mountDisk(mountPoint);
-            });
             this.menu.addMenuItem(this.itemMount);
+            this.indicatorIcon.set_opacity(80);
         }
     }
 });
@@ -69,6 +72,7 @@ class Extension {
     constructor(uuid) {
         this._uuid = uuid;
         ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
+        this.mountPoint = "/mnt/Data";
     }
 
     enable() {
