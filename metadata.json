@@ -4,5 +4,7 @@
   "uuid": "johannes.bittner+spindown@gmail.com",
   "shell-version": [
     "3.38"
-  ]
+  ],
+  "gettext-domain": "spindown-harddisk",
+  "settings-schema": "org.gnome.shell.extensions.spindown-harddisk"
 }

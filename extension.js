@@ -16,21 +16,22 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-/* exported init */
-
-const GETTEXT_DOMAIN = 'spindown-harddisk';
 
 const { GObject, St } = imports.gi;
 
-const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+
+const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
 const _ = Gettext.gettext;
 
-const ExtensionUtils = imports.misc.extensionUtils;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Gio = imports.gi.Gio;
-const ByteArray = imports.byteArray;
+
+// TODO: fix warning, use ByteArray
+// const ByteArray = imports.byteArray;
 
 const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
@@ -47,22 +48,25 @@ class Indicator extends PanelMenu.Button {
         this.itemSpindown.connect('activate', () => {
             spindownDisk(extension.mountPoint);
         });
+        this.menu.addMenuItem(this.itemSpindown);
 
         this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${extension.mountPoint}`));
         this.itemMount.connect('activate', () => {
             mountDisk(extension.mountPoint);
         });
+        this.menu.addMenuItem(this.itemMount);
 
-        this.updateMenu();
+        this.updateUI();
     }
 
-    updateMenu() {
-        this.menu.removeAll();
+    updateUI() {
         if (findDeviceFile(extension.mountPoint)) {
-            this.menu.addMenuItem(this.itemSpindown);
+            this.itemSpindown.show();
+            this.itemMount.hide();
             this.indicatorIcon.set_opacity(255);
         } else {
-            this.menu.addMenuItem(this.itemMount);
+            this.itemMount.show();
+            this.itemSpindown.hide();
             this.indicatorIcon.set_opacity(80);
         }
     }
@@ -71,7 +75,7 @@ class Indicator extends PanelMenu.Button {
 class Extension {
     constructor(uuid) {
         this._uuid = uuid;
-        ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
+        ExtensionUtils.initTranslations();
         this.mountPoint = "/mnt/Data";
     }
 
@@ -85,8 +89,8 @@ class Extension {
         this._indicator = null;
     }
 
-    updateIndicatorMenu() {
-        this._indicator.updateMenu();
+    updateUI() {
+        this._indicator.updateUI();
     }
 }
 
@@ -133,12 +137,12 @@ async function spindownDisk(mountPoint) {
         log(`unmount-and-spindown failed: ${stderr}`);
     }
 
-    extension.updateIndicatorMenu();
+    extension.updateUI();
 }
 
 async function mountDisk(mountPoint) {
     await exec(["mount", mountPoint], privileged=true);
-    extension.updateIndicatorMenu();
+    extension.updateUI();
 }
 
 
