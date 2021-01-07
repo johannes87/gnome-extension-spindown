@@ -33,9 +33,9 @@ const Gio = imports.gi.Gio;
 // TODO: fix warning, use ByteArray
 // const ByteArray = imports.byteArray;
 
-const Indicator = GObject.registerClass(
-class Indicator extends PanelMenu.Button {
-    _init() {
+const HarddiskIndicator = GObject.registerClass(
+class HarddiskIndicator extends PanelMenu.Button {
+    _init({mountPoint}) {
         super._init(0.0, _('Spindown Harddisk'));
 
         this.indicatorIcon = new St.Icon({
@@ -44,23 +44,25 @@ class Indicator extends PanelMenu.Button {
         });
         this.add_child(this.indicatorIcon);
 
-        this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${extension.mountPoint}`));
+        this.itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${mountPoint}`));
         this.itemSpindown.connect('activate', () => {
-            spindownDisk(extension.mountPoint);
+            this.spindownDisk(mountPoint);
         });
         this.menu.addMenuItem(this.itemSpindown);
 
-        this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${extension.mountPoint}`));
+        this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${mountPoint}`));
         this.itemMount.connect('activate', () => {
-            mountDisk(extension.mountPoint);
+            this.mountDisk(mountPoint);
         });
         this.menu.addMenuItem(this.itemMount);
+
+        this.mountPoint = mountPoint;
 
         this.updateUI();
     }
 
     updateUI() {
-        if (findDeviceFile(extension.mountPoint)) {
+        if (findDeviceFile(this.mountPoint)) {
             this.itemSpindown.show();
             this.itemMount.hide();
             this.indicatorIcon.set_opacity(255);
@@ -70,36 +72,39 @@ class Indicator extends PanelMenu.Button {
             this.indicatorIcon.set_opacity(80);
         }
     }
+
+    // TODO: use /dev/sda instead of /mnt/Data as input; this is what the user can configure (together with mountpoint)
+    async spindownDisk(mountPoint) {
+        const deviceFilePath = findDeviceFile(mountPoint);
+        if (!deviceFilePath) {
+            Main.notify(_(`Mount point ${mountPoint} not found`));
+            return;
+        }
+
+        try {
+            await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
+        } catch(stderr) {
+            log("No processes were killed");
+        }
+
+        const unmount_spindown = `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`;
+
+        try {
+            log("hi?");
+            await exec(unmount_spindown, true);
+        } catch(stderr) {
+            log(`unmount-and-spindown failed: ${stderr}`);
+        }
+
+        this.updateUI();
+    }
+
+    async mountDisk(mountPoint) {
+        await exec(`mount ${mountPoint}`, true);
+        this.updateUI();
+    }
 });
 
-class Extension {
-    constructor(uuid) {
-        this._uuid = uuid;
-        ExtensionUtils.initTranslations();
-        this.mountPoint = "/mnt/Data";
-    }
-
-    enable() {
-        this._indicator = new Indicator();
-        Main.panel.addToStatusArea(this._uuid, this._indicator);
-    }
-
-    disable() {
-        this._indicator.destroy();
-        this._indicator = null;
-    }
-
-    updateUI() {
-        this._indicator.updateUI();
-    }
-}
-
-let extension = null;
-
-function init(meta) {
-    extension = new Extension(meta.uuid);
-    return extension;
-}
 
 function findDeviceFile(mountPoint) {
     const mounts = new String(Gio.File.new_for_path("/proc/mounts").load_contents(null));
@@ -113,35 +118,6 @@ function findDeviceFile(mountPoint) {
     return mountpointLines[0].split(" ")[0];
 }
 
-// TODO: use /dev/sda instead of /mnt/Data as input; this is what the user can configure (together with mountpoint)
-async function spindownDisk(mountPoint) {
-    const deviceFilePath = findDeviceFile(mountPoint);
-    if (!deviceFilePath) {
-        Main.notify(_(`Mount point ${mountPoint} not found`));
-        return;
-    }
-
-    try {
-        await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
-    } catch(stderr) {
-        log(`fuser kill failed: ${stderr || '(empty)'}`);
-    }
-    
-    const unmount_spindown = `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`;
-
-    try {
-        await exec(unmount_spindown, privileged=true);
-    } catch(stderr) {
-        log(`unmount-and-spindown failed: ${stderr}`);
-    }
-
-    extension.updateUI();
-}
-
-async function mountDisk(mountPoint) {
-    await exec(`mount ${mountPoint}`, privileged=true);
-    extension.updateUI();
-}
 
 
 function exec(shell_code, privileged=false) {
@@ -152,7 +128,7 @@ function exec(shell_code, privileged=false) {
         }
         args.push(shell_code);
 
-        const args_string = args.map(arg => `"${arg}"`).join(' ');
+        const args_string = args.map(arg => `'${arg}'`).join(' ');
         log(`Executing ${privileged ? '(privileged)' : ''} ${args_string}`);
 
         try {
@@ -179,4 +155,26 @@ function exec(shell_code, privileged=false) {
             reject(e);
         }
     });
+}
+
+class Extension {
+    constructor(uuid) {
+        this._uuid = uuid;
+        ExtensionUtils.initTranslations();
+    }
+
+    enable() {
+        this._indicator = new HarddiskIndicator({mountPoint: "/mnt/Data"});
+        Main.panel.addToStatusArea(this._uuid, this._indicator);
+    }
+
+    disable() {
+        this._indicator.destroy();
+        this._indicator = null;
+    }
+}
+
+function init(meta) {
+    extension = new Extension(meta.uuid);
+    return extension;
 }
