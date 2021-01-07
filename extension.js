@@ -91,7 +91,6 @@ class HarddiskIndicator extends PanelMenu.Button {
         const unmount_spindown = `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`;
 
         try {
-            log("hi?");
             await exec(unmount_spindown, true);
         } catch(stderr) {
             log(`unmount-and-spindown failed: ${stderr}`);
