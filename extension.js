@@ -122,18 +122,16 @@ async function spindownDisk(mountPoint) {
     }
 
     try {
-        await exec(['sh', '-c', `fuser -k -M -m ${mountPoint} 2>/dev/null`]);
-    }
-    catch(stderr) {
+        await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
+    } catch(stderr) {
         log(`fuser kill failed: ${stderr || '(empty)'}`);
     }
+    
+    const unmount_spindown = `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`;
 
     try {
-        await exec(
-            ['sh', '-c', `umount ${deviceFilePath} && sync && sleep 1 && smartctl -s standby,now ${deviceFilePath}`],
-            privileged=true)
-    }
-    catch(stderr) {
+        await exec(unmount_spindown, privileged=true);
+    } catch(stderr) {
         log(`unmount-and-spindown failed: ${stderr}`);
     }
 
@@ -141,19 +139,23 @@ async function spindownDisk(mountPoint) {
 }
 
 async function mountDisk(mountPoint) {
-    await exec(["mount", mountPoint], privileged=true);
+    await exec(`mount ${mountPoint}`, privileged=true);
     extension.updateUI();
 }
 
 
-function exec(args, privileged=false) {
+function exec(shell_code, privileged=false) {
     return new Promise((resolve, reject) => {
-        try {
-            log(`Executing ${privileged ? '(privileged)' : ''} ${args.join(',')}`);
+        let args = ['sh', '-c'];
+        if (privileged) {
+            args.unshift('pkexec');
+        }
+        args.push(shell_code);
 
-            if (privileged) {
-                args = ['pkexec'].concat(args);
-            }
+        const args_string = args.map(arg => `"${arg}"`).join(' ');
+        log(`Executing ${privileged ? '(privileged)' : ''} ${args_string}`);
+
+        try {
             let proc = Gio.Subprocess.new(
                 args,
                 Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
