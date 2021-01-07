@@ -28,10 +28,11 @@ const _ = Gettext.gettext;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const Gio = imports.gi.Gio;
 
-// TODO: fix warning, use ByteArray
-// const ByteArray = imports.byteArray;
+const Gio = imports.gi.Gio;
+const GLib = imports.gi.GLib;
+
+const ByteArray = imports.byteArray;
 
 const HarddiskIndicator = GObject.registerClass(
 class HarddiskIndicator extends PanelMenu.Button {
@@ -107,7 +108,7 @@ class HarddiskIndicator extends PanelMenu.Button {
 
 
 function findDeviceFile(mountPoint) {
-    const mounts = new String(Gio.File.new_for_path("/proc/mounts").load_contents(null));
+    const mounts = ByteArray.toString(GLib.file_get_contents("/proc/mounts")[1]);
     const mountpointLines = mounts.split("\n").filter(line => new RegExp(`${mountPoint}`).test(line));
 
     if (mountpointLines.length != 1) {
