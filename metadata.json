@@ -1,7 +1,7 @@
 {
-  "name": "Spindown Harddisk",
-  "description": "Spins down the Harddisk (and keeps it spinned down)",
-  "uuid": "johannes.bittner+spindown@gmail.com",
+  "name": "Spin down hard disk",
+  "description": "Spins down the hard disk (and keeps it spun down)",
+  "uuid": "johannes.bittner+spindown-harddisk@gmail.com",
   "shell-version": [
     "3.38"
   ],
