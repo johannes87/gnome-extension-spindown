@@ -3,7 +3,8 @@
   "description": "Spins down the hard disk (and keeps it spun down)",
   "uuid": "johannes.bittner+spindown-harddisk@gmail.com",
   "shell-version": [
-    "3.38"
+    "3.38",
+    "40"
   ],
   "gettext-domain": "spindown-harddisk",
   "settings-schema": "org.gnome.shell.extensions.spindown-harddisk"
