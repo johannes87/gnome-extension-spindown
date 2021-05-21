@@ -26,56 +26,56 @@ const HarddiskIndicator = GObject.registerClass(class HarddiskIndicator extends 
   _init() {
     super._init(St.Align.START);
 
-    this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
+    this._settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
-    this.indicatorIcon = new St.Icon({
+    this._indicatorIcon = new St.Icon({
       icon_name: 'drive-harddisk',
       style_class: 'system-status-icon',
     });
-    this.add_child(this.indicatorIcon);
+    this.add_child(this._indicatorIcon);
 
-    this.mountPoint = this.settings.get_string('mount-point');
-    this.settings.connect('changed::mount-point', () => {
-      this.mountPoint = this.settings.get_string('mount-point');
-      this.updateUI();
+    this._mountPoint = this._settings.get_string('mount-point');
+    this._settings.connect('changed::mount-point', () => {
+      this._mountPoint = this._settings.get_string('mount-point');
+      this._updateUI();
     });
 
-    this.updateUI();
+    this._updateUI();
   }
 
-  updateUI() {
+  _updateUI() {
     this.menu.removeAll();
 
-    if (this.mountPoint.trim() === '') {
+    if (this._mountPoint.trim() === '') {
       const itemSetup = new PopupMenu.PopupMenuItem(_('Initial setup...'));
       itemSetup.connect('activate', () => { Util.spawn(['gnome-extensions', 'prefs', Me.metadata.uuid]) });
       this.menu.addMenuItem(itemSetup);
       return;
     }
 
-    const isMounted = findDeviceFile(this.mountPoint);
+    const isMounted = findDeviceFile(this._mountPoint);
     if (isMounted) {
-      const itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${this.mountPoint}`));
-      itemSpindown.connect('activate', () => { this.spindownDisk(this.mountPoint); });
+      const itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${this._mountPoint}`));
+      itemSpindown.connect('activate', () => { this._spindownDisk(); });
       this.menu.addMenuItem(itemSpindown);
-      this.indicatorIcon.set_opacity(255);
+      this._indicatorIcon.set_opacity(255);
     } else {
-      const itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${this.mountPoint}`));
-      itemMount.connect('activate', () => { this.mountDisk(this.mountPoint); });
+      const itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${this._mountPoint}`));
+      itemMount.connect('activate', () => { this._mountDisk(); });
       this.menu.addMenuItem(itemMount);
-      this.indicatorIcon.set_opacity(80);
+      this._indicatorIcon.set_opacity(80);
     }
   }
 
-  async spindownDisk(mountPoint) {
-    const deviceFilePath = findDeviceFile(mountPoint);
+  async _spindownDisk() {
+    const deviceFilePath = findDeviceFile(this._mountPoint);
     if (!deviceFilePath) {
-      Main.notify(_(`Mount point ${mountPoint} not found`));
+      Main.notify(_(`Mount point ${this._mountPoint} not found`));
       return;
     }
 
     try {
-      await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
+      await exec(`fuser -k -M -m ${this._mountPoint} 2>/dev/null`);
     } catch (stderr) {
       log('No processes were killed');
     }
@@ -92,12 +92,12 @@ const HarddiskIndicator = GObject.registerClass(class HarddiskIndicator extends 
       log(`unmount-and-spindown failed: ${stderr}`);
     }
 
-    this.updateUI();
+    this._updateUI();
   }
 
-  async mountDisk(mountPoint) {
-    await exec(`mount ${mountPoint}`, true);
-    this.updateUI();
+  async _mountDisk() {
+    await exec(`mount ${this._mountPoint}`, true);
+    this._updateUI();
   }
 });
 
@@ -161,10 +161,8 @@ class Extension {
   }
 
   enable() {
-    // TODO: rename to _harddisk_indicator
-    this._indicator = new HarddiskIndicator();
-    // connect properties somehow? create a mount point property of HarddiskIndicator
-    Main.panel.addToStatusArea(this._uuid, this._indicator);
+    this._harddisk_indicator = new HarddiskIndicator();
+    Main.panel.addToStatusArea(this._uuid, this._harddisk_indicator);
   }
 
   disable() {

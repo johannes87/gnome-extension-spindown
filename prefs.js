@@ -13,7 +13,7 @@ function init() {
 
 function buildPrefsWidget() {
     ExtensionUtils.initTranslations();
-    this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
+    const settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
     const uiFilePath = `${Me.path}/ui/prefs.ui`;
     const builder = new Gtk.Builder();
@@ -22,7 +22,7 @@ function buildPrefsWidget() {
     }
 
     const mountPointEntry = builder.get_object('mount-point');
-    this.settings.bind(
+    settings.bind(
         'mount-point',
         mountPointEntry,
         'text',
