@@ -171,8 +171,6 @@ class Extension {
   }
 }
 
-// eslint-disable-next-line no-unused-vars
 function init(meta) {
-  extension = new Extension(meta.uuid);
-  return extension;
+  return new Extension(meta.uuid);
 }
