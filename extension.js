@@ -22,85 +22,84 @@ const GLib = imports.gi.GLib;
 
 const ByteArray = imports.byteArray;
 
-const HarddiskIndicator = GObject.registerClass(
-    class HarddiskIndicator extends PanelMenu.Button {
-      _init() {
-        super._init(St.Align.START);
+const HarddiskIndicator = GObject.registerClass(class HarddiskIndicator extends PanelMenu.Button {
+  _init() {
+    super._init(St.Align.START);
 
-        this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
+    this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
-        this.indicatorIcon = new St.Icon({
-          icon_name: 'drive-harddisk',
-          style_class: 'system-status-icon',
-        });
-        this.add_child(this.indicatorIcon);
-
-        this.mountPoint = this.settings.get_string('mount-point');
-        this.settings.connect('changed::mount-point', () => {
-          this.mountPoint = this.settings.get_string('mount-point');
-          this.updateUI();
-        });
-
-        this.updateUI();
-      }
-
-      updateUI() {
-        this.menu.removeAll();
-
-        if (this.mountPoint.trim() === '') {
-          const itemSetup = new PopupMenu.PopupMenuItem(_('Initial setup...'));
-          itemSetup.connect('activate', () => { Util.spawn(['gnome-extensions', 'prefs', Me.metadata.uuid]) });
-          this.menu.addMenuItem(itemSetup);
-          return;
-        }
-
-        const isMounted = findDeviceFile(this.mountPoint);
-        if (isMounted) {
-          const itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${this.mountPoint}`));
-          itemSpindown.connect('activate', () => { this.spindownDisk(this.mountPoint); });
-          this.menu.addMenuItem(itemSpindown);
-          this.indicatorIcon.set_opacity(255);
-        } else {
-          const itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${this.mountPoint}`));
-          itemMount.connect('activate', () => { this.mountDisk(this.mountPoint); });
-          this.menu.addMenuItem(itemMount);
-          this.indicatorIcon.set_opacity(80);
-        }
-      }
-
-      async spindownDisk(mountPoint) {
-        const deviceFilePath = findDeviceFile(mountPoint);
-        if (!deviceFilePath) {
-          Main.notify(_(`Mount point ${mountPoint} not found`));
-          return;
-        }
-
-        try {
-          await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
-        } catch (stderr) {
-          log('No processes were killed');
-        }
-
-        const unmountSpindown = `
-          umount ${deviceFilePath} \
-          && sync \
-          && sleep 1 \
-          && smartctl -s standby,now ${deviceFilePath}`;
-
-        try {
-          await exec(unmountSpindown, true);
-        } catch (stderr) {
-          log(`unmount-and-spindown failed: ${stderr}`);
-        }
-
-        this.updateUI();
-      }
-
-      async mountDisk(mountPoint) {
-        await exec(`mount ${mountPoint}`, true);
-        this.updateUI();
-      }
+    this.indicatorIcon = new St.Icon({
+      icon_name: 'drive-harddisk',
+      style_class: 'system-status-icon',
     });
+    this.add_child(this.indicatorIcon);
+
+    this.mountPoint = this.settings.get_string('mount-point');
+    this.settings.connect('changed::mount-point', () => {
+      this.mountPoint = this.settings.get_string('mount-point');
+      this.updateUI();
+    });
+
+    this.updateUI();
+  }
+
+  updateUI() {
+    this.menu.removeAll();
+
+    if (this.mountPoint.trim() === '') {
+      const itemSetup = new PopupMenu.PopupMenuItem(_('Initial setup...'));
+      itemSetup.connect('activate', () => { Util.spawn(['gnome-extensions', 'prefs', Me.metadata.uuid]) });
+      this.menu.addMenuItem(itemSetup);
+      return;
+    }
+
+    const isMounted = findDeviceFile(this.mountPoint);
+    if (isMounted) {
+      const itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${this.mountPoint}`));
+      itemSpindown.connect('activate', () => { this.spindownDisk(this.mountPoint); });
+      this.menu.addMenuItem(itemSpindown);
+      this.indicatorIcon.set_opacity(255);
+    } else {
+      const itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${this.mountPoint}`));
+      itemMount.connect('activate', () => { this.mountDisk(this.mountPoint); });
+      this.menu.addMenuItem(itemMount);
+      this.indicatorIcon.set_opacity(80);
+    }
+  }
+
+  async spindownDisk(mountPoint) {
+    const deviceFilePath = findDeviceFile(mountPoint);
+    if (!deviceFilePath) {
+      Main.notify(_(`Mount point ${mountPoint} not found`));
+      return;
+    }
+
+    try {
+      await exec(`fuser -k -M -m ${mountPoint} 2>/dev/null`);
+    } catch (stderr) {
+      log('No processes were killed');
+    }
+
+    const unmountSpindown = `
+      umount ${deviceFilePath} \
+      && sync \
+      && sleep 1 \
+      && smartctl -s standby,now ${deviceFilePath}`;
+
+    try {
+      await exec(unmountSpindown, true);
+    } catch (stderr) {
+      log(`unmount-and-spindown failed: ${stderr}`);
+    }
+
+    this.updateUI();
+  }
+
+  async mountDisk(mountPoint) {
+    await exec(`mount ${mountPoint}`, true);
+    this.updateUI();
+  }
+});
 
 
 function findDeviceFile(mountPoint) {
