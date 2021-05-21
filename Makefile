@@ -11,4 +11,4 @@ zip:
 	zip -qr "$(UUID)-$(VERSION).zip" $(ZIP_FILES)
 
 clean:
-	rm schemas/gschemas.compiled
+	rm schemas/gschemas.compiled *.zip
