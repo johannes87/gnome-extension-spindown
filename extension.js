@@ -35,12 +35,17 @@ const HarddiskIndicator = GObject.registerClass(class HarddiskIndicator extends 
     this.add_child(this._indicatorIcon);
 
     this._mountPoint = this._settings.get_string('mount-point');
-    this._settings.connect('changed::mount-point', () => {
+    this._changedMountPointSignal = this._settings.connect('changed::mount-point', () => {
       this._mountPoint = this._settings.get_string('mount-point');
       this._updateUI();
     });
 
     this._updateUI();
+  }
+
+  destroy() {
+    super.destroy();
+    this._settings.disconnect(this._changedMountPointSignal);
   }
 
   _updateUI() {
