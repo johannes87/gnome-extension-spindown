@@ -5,35 +5,41 @@ const Gtk = imports.gi.Gtk;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
-
 const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
 const _ = Gettext.gettext;
 
-
-const SpindownPrefsWidget = new GObject.registerClass(class SpindownPrefsWidget extends Gtk.Grid {
-    _init() {
-        super._init();
-
-        this.margin = this.row_spacing = this.column_spacing = 20;
-
-        // TODO: put .xml schemas file in /schemas directory
-        this._settings = ExtensionUtils.getSettings();
-
-        this.attach(new Gtk.Label({ label: _('Hello')}, 0, 0, 1, 1));
-        this.attach(new Gtk.Label({ label: _('World')}, 1, 0, 1, 1));
-    }
-});
-
-
 function init() {
-    ExtensionUtils.initTranslations();
-    log("\n\n\n\n\n================\nhello prefs init");
-    log(`extensionUtils == ${ExtensionUtils}\n===========================\n\n\n\n\n`);
-
 }
 
 function buildPrefsWidget() {
-    let w = new SpindownPrefsWidget();
-    w.show_all();
-    return w;
+    ExtensionUtils.initTranslations();
+    this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
+
+    let prefsWidget = new Gtk.Grid();
+
+    let title = new Gtk.Label({
+        label: `<b>${Me.metadata.name} Preferences</b>`,
+        halign: Gtk.Align.START,
+        use_markup: true,
+        visible: true
+    });
+    prefsWidget.attach(title, 1, 1, 1, 1);
+
+    let labelMountPoint = new Gtk.Label({
+        label: `Mount point`
+    });
+    prefsWidget.attach(labelMountPoint, 1, 2, 1, 1);
+
+    let entryMountPoint = new Gtk.Entry();
+    entryMountPoint.set_placeholder_text(_('e.g. /mnt/Data'));
+    prefsWidget.attach(entryMountPoint, 2, 2, 1, 1);
+
+    this.settings.bind(
+        'mount-point',
+        entryMountPoint,
+        'text',
+        Gio.SettingsBindFlags.DEFAULT
+    );
+
+    return prefsWidget;
 }
