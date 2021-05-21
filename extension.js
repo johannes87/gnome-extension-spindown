@@ -166,8 +166,8 @@ class Extension {
   }
 
   disable() {
-    this._indicator.destroy();
-    this._indicator = null;
+    this._harddisk_indicator.destroy();
+    this._harddisk_indicator = null;
   }
 }
 
