@@ -25,7 +25,7 @@ const ByteArray = imports.byteArray;
 const HarddiskIndicator = GObject.registerClass(
     class HarddiskIndicator extends PanelMenu.Button {
       _init() {
-        super._init(0.0, _('Spindown Harddisk'));
+        super._init(St.Align.START);
 
         this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
