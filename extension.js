@@ -6,6 +6,7 @@
 
 const {GObject, St} = imports.gi;
 
+const Util = imports.misc.util;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
@@ -23,8 +24,10 @@ const ByteArray = imports.byteArray;
 
 const HarddiskIndicator = GObject.registerClass(
     class HarddiskIndicator extends PanelMenu.Button {
-      _init({mountPoint}) {
+      _init() {
         super._init(0.0, _('Spindown Harddisk'));
+
+        this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
         this.indicatorIcon = new St.Icon({
           icon_name: 'drive-harddisk',
@@ -32,33 +35,35 @@ const HarddiskIndicator = GObject.registerClass(
         });
         this.add_child(this.indicatorIcon);
 
-        const menuItemText = `Spin down ${mountPoint}`;
-
-        this.itemSpindown = new PopupMenu.PopupMenuItem(menuItemText);
-        this.itemSpindown.connect('activate', () => {
-          this.spindownDisk(mountPoint);
+        this.mountPoint = this.settings.get_string('mount-point');
+        this.settings.connect('changed::mount-point', () => {
+          this.mountPoint = this.settings.get_string('mount-point');
+          this.updateUI();
         });
-        this.menu.addMenuItem(this.itemSpindown);
-
-        this.itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${mountPoint}`));
-        this.itemMount.connect('activate', () => {
-          this.mountDisk(mountPoint);
-        });
-        this.menu.addMenuItem(this.itemMount);
-
-        this.mountPoint = mountPoint;
 
         this.updateUI();
       }
 
       updateUI() {
-        if (findDeviceFile(this.mountPoint)) {
-          this.itemSpindown.show();
-          this.itemMount.hide();
+        this.menu.removeAll();
+
+        if (this.mountPoint.trim() === '') {
+          const itemSetup = new PopupMenu.PopupMenuItem(_('Initial setup...'));
+          itemSetup.connect('activate', () => { Util.spawn(['gnome-extensions', 'prefs', Me.metadata.uuid]) });
+          this.menu.addMenuItem(itemSetup);
+          return;
+        }
+
+        const isMounted = findDeviceFile(this.mountPoint);
+        if (isMounted) {
+          const itemSpindown = new PopupMenu.PopupMenuItem(_(`Spin down ${this.mountPoint}`));
+          itemSpindown.connect('activate', () => { this.spindownDisk(this.mountPoint); });
+          this.menu.addMenuItem(itemSpindown);
           this.indicatorIcon.set_opacity(255);
         } else {
-          this.itemMount.show();
-          this.itemSpindown.hide();
+          const itemMount = new PopupMenu.PopupMenuItem(_(`Mount ${this.mountPoint}`));
+          itemMount.connect('activate', () => { this.mountDisk(this.mountPoint); });
+          this.menu.addMenuItem(itemMount);
           this.indicatorIcon.set_opacity(80);
         }
       }
@@ -157,7 +162,9 @@ class Extension {
   }
 
   enable() {
-    this._indicator = new HarddiskIndicator({mountPoint: '/mnt/Data'});
+    // TODO: rename to _harddisk_indicator
+    this._indicator = new HarddiskIndicator();
+    // connect properties somehow? create a mount point property of HarddiskIndicator
     Main.panel.addToStatusArea(this._uuid, this._indicator);
   }
 

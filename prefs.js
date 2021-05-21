@@ -15,31 +15,20 @@ function buildPrefsWidget() {
     ExtensionUtils.initTranslations();
     this.settings = ExtensionUtils.getSettings(Me.metadata['settings-schema']);
 
-    let prefsWidget = new Gtk.Grid();
+    const uiFilePath = `${Me.path}/ui/prefs.ui`;
+    const builder = new Gtk.Builder();
+    if (builder.add_from_file(uiFilePath) === 0) {
+        throw new Error(`Could not load ${uiFilePath}, please report a bug.`);
+    }
 
-    let title = new Gtk.Label({
-        label: `<b>${Me.metadata.name} Preferences</b>`,
-        halign: Gtk.Align.START,
-        use_markup: true,
-        visible: true
-    });
-    prefsWidget.attach(title, 1, 1, 1, 1);
-
-    let labelMountPoint = new Gtk.Label({
-        label: `Mount point`
-    });
-    prefsWidget.attach(labelMountPoint, 1, 2, 1, 1);
-
-    let entryMountPoint = new Gtk.Entry();
-    entryMountPoint.set_placeholder_text(_('e.g. /mnt/Data'));
-    prefsWidget.attach(entryMountPoint, 2, 2, 1, 1);
-
+    const mountPointEntry = builder.get_object('mount-point');
     this.settings.bind(
         'mount-point',
-        entryMountPoint,
+        mountPointEntry,
         'text',
         Gio.SettingsBindFlags.DEFAULT
     );
 
-    return prefsWidget;
+    const mainContainer = builder.get_object('main-container');
+    return mainContainer;
 }
