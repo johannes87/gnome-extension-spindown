@@ -3,9 +3,9 @@ const St = imports.gi.St;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const ByteArray = imports.byteArray;
-
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
+const Util = imports.misc.util;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
