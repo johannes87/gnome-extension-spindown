@@ -7,7 +7,7 @@ all: gschemas.compiled
 gschemas.compiled:
 	glib-compile-schemas schemas
 
-zip:
+zip: gschemas.compiled
 	zip -qr "$(UUID)-$(VERSION).zip" $(ZIP_FILES)
 
 clean:
