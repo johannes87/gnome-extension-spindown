@@ -1,6 +1,6 @@
 UUID = spindown-harddisk@johannes.bittner.gmail.com
 VERSION = $(shell git rev-parse HEAD)
-ZIP_FILES = schemas ui *.js *.json *.css LICENSE
+ZIP_FILES = schemas ui *.js *.json *.css LICENSE README.md
 
 all: gschemas.compiled
 
